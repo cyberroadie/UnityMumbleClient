@@ -11,6 +11,7 @@ using Version = MumbleProto.Version;
 
 namespace MumbleUnityClient
 {
+    public delegate void MumbleError(string message, bool fatal = false);
 
     public class MumbleClient
     {
@@ -42,8 +43,24 @@ namespace MumbleUnityClient
                     );
             }
             var host = new IPEndPoint(addresses[0], port);
-            _mtc = new MumbleTCPConnection(host, hostName, this);   
+            _mtc = new MumbleTCPConnection(host, hostName, DealWithError, this);   
 
+        }
+
+        public void DealWithError(string message, bool fatal)
+        {
+            if (fatal)
+            {
+                Console.WriteLine("Fatal error: " + message);
+                Console.ReadLine();
+                _mtc.Close();
+//                _muc.Close();
+                Environment.Exit(1);
+            }
+            else
+            {
+                Console.WriteLine("Recovering from: " + message);
+            }
         }
 
         public void Connect(string username, string password)
@@ -64,6 +81,5 @@ namespace MumbleUnityClient
             };
             _mtc.SendMessage(MessageType.TextMessage, msg);
         }
-
     }
 }

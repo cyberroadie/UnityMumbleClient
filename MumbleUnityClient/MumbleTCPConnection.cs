@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
+using System.Timers;
 using MumbleProto;
 using NLog;
 using ProtoBuf;
@@ -22,13 +23,15 @@ namespace MumbleUnityClient
         private SslStream _ssl;
         private BinaryReader _reader;
         private BinaryWriter _writer;
+        private MumbleError _errorCallback;
 
-        public MumbleTCPConnection(IPEndPoint host, string hostname, MumbleClient mc)
+        public MumbleTCPConnection(IPEndPoint host, string hostname, MumbleError errorCallback, MumbleClient mc)
         {
             _host = host;
             _hostname = hostname;
             _mc = mc;
             _tcpClient = new TcpClient();
+            _errorCallback = errorCallback;
         }
 
         public void Connect(string username, string password)
@@ -49,6 +52,14 @@ namespace MumbleUnityClient
                 password = password,
             };
             SendMessage<MumbleProto.Authenticate>(MessageType.Authenticate, authenticate);
+
+            // Keepalive, if the Mumble server doesn't get a message 
+            // for 30 seconds it will close the connection
+            var tcpTimer = new System.Timers.Timer();
+            tcpTimer.Elapsed += new ElapsedEventHandler(SendPing);
+            tcpTimer.Interval = 2000;
+            tcpTimer.Enabled = true;
+
         }
 
         public void SendMessage<T>(MessageType mt, T message)
@@ -136,13 +147,24 @@ namespace MumbleUnityClient
                             PrefixStyle.Fixed32BigEndian);
                         break;
                     default:
-                        throw new NotImplementedException("Message type " + messageType.ToString() + " not implemented");
+                        _errorCallback("Message type " + messageType.ToString() + " not implemented", true);
+                        break;
                 }
             }
             catch (EndOfStreamException ex)
             {
                 logger.Error(ex);
             }
+        }
+
+        public void Close()
+        {
+            _ssl.Close();
+        }
+
+        public void SendPing(object sender, ElapsedEventArgs elapsedEventArgs)
+        {
+            SendMessage(MessageType.Ping, new Ping());
         }
     }
 }

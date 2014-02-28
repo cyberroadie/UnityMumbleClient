@@ -24,6 +24,7 @@ namespace MumbleUnityClient
             }
         }
 
+        // This is the Unity Update() routine
         private static void Update()
         {
             while(true)
