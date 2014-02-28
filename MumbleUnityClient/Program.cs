@@ -12,7 +12,7 @@ namespace MumbleUnityClient
         private static void Main(string[] args)
         {
             _mc = new MumbleClient("127.0.0.1", 64738);
-            _mc.Connect("olivier", "");
+            _mc.Connect("olivier visual studio", "");
 
             Thread t = new Thread(Update);
             t.Start();

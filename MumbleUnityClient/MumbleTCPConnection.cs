@@ -24,6 +24,7 @@ namespace MumbleUnityClient
         private BinaryReader _reader;
         private BinaryWriter _writer;
         private MumbleError _errorCallback;
+        private bool _validConnection = false;
 
         public MumbleTCPConnection(IPEndPoint host, string hostname, MumbleError errorCallback, MumbleClient mc)
         {
@@ -137,6 +138,7 @@ namespace MumbleUnityClient
                     case MessageType.ServerConfig:
                         _mc.ServerConfig = Serializer.DeserializeWithLengthPrefix<MumbleProto.ServerConfig>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
+                        _validConnection = true; // handshake complete
                         break;
                     case MessageType.TextMessage:
                         var textMessage = Serializer.DeserializeWithLengthPrefix<MumbleProto.ServerConfig>(_ssl,
@@ -145,6 +147,12 @@ namespace MumbleUnityClient
                     case MessageType.UDPTunnel:
                         var udpTunnel = Serializer.DeserializeWithLengthPrefix<MumbleProto.UDPTunnel>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
+                        break;
+                    case MessageType.Reject:
+                        var reject = Serializer.DeserializeWithLengthPrefix<MumbleProto.Reject>(_ssl,
+                            PrefixStyle.Fixed32BigEndian);
+                        _validConnection = false;
+                        _errorCallback("Mumble server reject: " + reject.reason,true);
                         break;
                     default:
                         _errorCallback("Message type " + messageType.ToString() + " not implemented", true);
@@ -164,7 +172,8 @@ namespace MumbleUnityClient
 
         public void SendPing(object sender, ElapsedEventArgs elapsedEventArgs)
         {
-            SendMessage(MessageType.Ping, new Ping());
+            if (_validConnection)
+                SendMessage(MessageType.Ping, new Ping());
         }
     }
 }
