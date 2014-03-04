@@ -13,6 +13,8 @@ namespace MumbleUnityClient
 {
     public delegate void MumbleError(string message, bool fatal = false);
 
+    public delegate void StartUDP(CryptSetup cryptSetup);
+
     public class MumbleClient
     {
         Logger logger = LogManager.GetLogger("MumbleClient");
@@ -43,7 +45,8 @@ namespace MumbleUnityClient
                     );
             }
             var host = new IPEndPoint(addresses[0], port);
-            _mtc = new MumbleTCPConnection(host, hostName, DealWithError, this);   
+            _mtc = new MumbleTCPConnection(host, hostName, ConnectUDP, DealWithError, this);
+            _muc = new MumbleUDPConnection(host, DealWithError);
 
         }
 
@@ -54,7 +57,7 @@ namespace MumbleUnityClient
                 Console.WriteLine("Fatal error: " + message);
                 Console.ReadLine();
                 _mtc.Close();
-//                _muc.Close();
+                _muc.Close();
                 Environment.Exit(1);
             }
             else
@@ -63,9 +66,16 @@ namespace MumbleUnityClient
             }
         }
 
-        public void Connect(string username, string password)
+        public void ConnectTCP(string username, string password)
         {
+            logger.Debug("Connecting via TCP");
             _mtc.Connect(username, password);
+        }
+
+        public void ConnectUDP(CryptSetup cryptSetup)
+        {
+            logger.Debug("Connecting via UDP");
+            _muc.Connect(cryptSetup);
         }
 
         public void Process()

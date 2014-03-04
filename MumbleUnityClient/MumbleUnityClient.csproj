@@ -32,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="crypto">
+      <HintPath>..\..\..\Perforce\olivier_macwin\SkunkWorks\bc-csharp\crypto\bin\Debug\crypto.dll</HintPath>
+    </Reference>
     <Reference Include="NAudio">
       <HintPath>..\packages\NAudio.1.7\lib\net35\NAudio.dll</HintPath>
     </Reference>
@@ -55,6 +58,8 @@
     <Compile Include="MumbleClient.cs" />
     <Compile Include="MumbleTCPConnection.cs" />
     <Compile Include="MumbleUDPConnection.cs" />
+    <Compile Include="OcbAes.cs" />
+    <Compile Include="OCBEncryption.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

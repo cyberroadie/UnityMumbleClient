@@ -23,15 +23,17 @@ namespace MumbleUnityClient
         private SslStream _ssl;
         private BinaryReader _reader;
         private BinaryWriter _writer;
+        private StartUDP _connectUDP;
         private MumbleError _errorCallback;
         private bool _validConnection = false;
 
-        public MumbleTCPConnection(IPEndPoint host, string hostname, MumbleError errorCallback, MumbleClient mc)
+        public MumbleTCPConnection(IPEndPoint host, string hostname, StartUDP connectUDP, MumbleError errorCallback, MumbleClient mc)
         {
             _host = host;
             _hostname = hostname;
             _mc = mc;
             _tcpClient = new TcpClient();
+            _connectUDP = connectUDP;
             _errorCallback = errorCallback;
         }
 
@@ -58,16 +60,19 @@ namespace MumbleUnityClient
             // for 30 seconds it will close the connection
             var tcpTimer = new System.Timers.Timer();
             tcpTimer.Elapsed += new ElapsedEventHandler(SendPing);
-            tcpTimer.Interval = 2000;
+            tcpTimer.Interval = 5000;
             tcpTimer.Enabled = true;
 
         }
 
         public void SendMessage<T>(MessageType mt, T message)
         {
-            logger.Debug("Sending " + mt.ToString() + " message");
-            _writer.Write(IPAddress.HostToNetworkOrder((short)mt));
-            Serializer.SerializeWithLengthPrefix<T>(_ssl, message, PrefixStyle.Fixed32BigEndian);
+            lock (_ssl)
+            {
+                logger.Debug("Sending " + mt.ToString() + " message");
+                _writer.Write(IPAddress.HostToNetworkOrder((short) mt));
+                Serializer.SerializeWithLengthPrefix<T>(_ssl, message, PrefixStyle.Fixed32BigEndian);
+            }
         }
 
         private void ConnectViaTCP()
@@ -109,10 +114,12 @@ namespace MumbleUnityClient
                     case MessageType.Version:
                         _mc.RemoteVersion = Serializer.DeserializeWithLengthPrefix<MumbleProto.Version>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
+                        logger.Debug("Server version: " + _mc.RemoteVersion.release);
                         break;
                     case MessageType.CryptSetup:
-                        _mc.CryptSetup = Serializer.DeserializeWithLengthPrefix<MumbleProto.CryptSetup>(_ssl,
+                        var cryptSetup = Serializer.DeserializeWithLengthPrefix<MumbleProto.CryptSetup>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
+                        _connectUDP(cryptSetup);
                         break;
                     case MessageType.CodecVersion:
                         _mc.CodecVersion = Serializer.DeserializeWithLengthPrefix<MumbleProto.CodecVersion>(_ssl,
@@ -148,6 +155,11 @@ namespace MumbleUnityClient
                         var udpTunnel = Serializer.DeserializeWithLengthPrefix<MumbleProto.UDPTunnel>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         break;
+                    case MessageType.Ping:
+                        var ping = Serializer.DeserializeWithLengthPrefix<MumbleProto.Ping>(_ssl,
+                            PrefixStyle.Fixed32BigEndian);
+                            logger.Debug("Received ping: "+ ping.timestamp +", udp: " + ping.udp_packets + ", tcp:" + ping.tcp_packets);
+                        break;
                     case MessageType.Reject:
                         var reject = Serializer.DeserializeWithLengthPrefix<MumbleProto.Reject>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
@@ -173,7 +185,12 @@ namespace MumbleUnityClient
         public void SendPing(object sender, ElapsedEventArgs elapsedEventArgs)
         {
             if (_validConnection)
+            {
+                var ping = new Ping();
+                ping.timestamp = (ulong) (DateTime.UtcNow.Ticks - DateTime.Parse("01/01/1970 00:00:00").Ticks);
+                logger.Debug("Sending TCP ping with timestamp: " + ping.timestamp);
                 SendMessage(MessageType.Ping, new Ping());
+            }
         }
     }
 }
