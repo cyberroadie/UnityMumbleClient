@@ -14,20 +14,21 @@ namespace MumbleUnityClient
 {
     public class MumbleTCPConnection
     {
+        private readonly StartUDP _connectUDP;
+        private readonly MumbleError _errorCallback;
         private readonly IPEndPoint _host;
         private readonly string _hostname;
-        private readonly Logger logger = LogManager.GetLogger("MumbleUnityConnect");
 
-        private MumbleClient _mc;
+        private readonly MumbleClient _mc;
         private readonly TcpClient _tcpClient;
-        private SslStream _ssl;
+        private readonly Logger logger = LogManager.GetLogger("MumbleUnityConnect");
         private BinaryReader _reader;
+        private SslStream _ssl;
+        private bool _validConnection;
         private BinaryWriter _writer;
-        private StartUDP _connectUDP;
-        private MumbleError _errorCallback;
-        private bool _validConnection = false;
 
-        public MumbleTCPConnection(IPEndPoint host, string hostname, StartUDP connectUDP, MumbleError errorCallback, MumbleClient mc)
+        public MumbleTCPConnection(IPEndPoint host, string hostname, StartUDP connectUDP, MumbleError errorCallback,
+            MumbleClient mc)
         {
             _host = host;
             _hostname = hostname;
@@ -47,31 +48,30 @@ namespace MumbleUnityClient
                 os = Environment.OSVersion.ToString(),
                 os_version = Environment.OSVersion.VersionString,
             };
-            SendMessage<MumbleProto.Version>(MessageType.Version, version);
+            SendMessage(MessageType.Version, version);
 
             var authenticate = new Authenticate
             {
                 username = username,
                 password = password,
             };
-            SendMessage<MumbleProto.Authenticate>(MessageType.Authenticate, authenticate);
+            SendMessage(MessageType.Authenticate, authenticate);
 
             // Keepalive, if the Mumble server doesn't get a message 
             // for 30 seconds it will close the connection
-            var tcpTimer = new System.Timers.Timer();
-            tcpTimer.Elapsed += new ElapsedEventHandler(SendPing);
+            var tcpTimer = new Timer();
+            tcpTimer.Elapsed += SendPing;
             tcpTimer.Interval = 5000;
             tcpTimer.Enabled = true;
-
         }
 
         public void SendMessage<T>(MessageType mt, T message)
         {
             lock (_ssl)
             {
-                logger.Debug("Sending " + mt.ToString() + " message");
+                logger.Debug("Sending " + mt + " message");
                 _writer.Write(IPAddress.HostToNetworkOrder((short) mt));
-                Serializer.SerializeWithLengthPrefix<T>(_ssl, message, PrefixStyle.Fixed32BigEndian);
+                Serializer.SerializeWithLengthPrefix(_ssl, message, PrefixStyle.Fixed32BigEndian);
             }
         }
 
@@ -112,68 +112,89 @@ namespace MumbleUnityClient
                 switch (messageType)
                 {
                     case MessageType.Version:
-                        _mc.RemoteVersion = Serializer.DeserializeWithLengthPrefix<MumbleProto.Version>(_ssl,
+                        _mc.RemoteVersion = Serializer.DeserializeWithLengthPrefix<Version>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         logger.Debug("Server version: " + _mc.RemoteVersion.release);
                         break;
                     case MessageType.CryptSetup:
-                        var cryptSetup = Serializer.DeserializeWithLengthPrefix<MumbleProto.CryptSetup>(_ssl,
+                        var cryptSetup = Serializer.DeserializeWithLengthPrefix<CryptSetup>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
-                        _connectUDP(cryptSetup);
+                        ProcessCryptSetup(cryptSetup);
                         break;
                     case MessageType.CodecVersion:
-                        _mc.CodecVersion = Serializer.DeserializeWithLengthPrefix<MumbleProto.CodecVersion>(_ssl,
+                        _mc.CodecVersion = Serializer.DeserializeWithLengthPrefix<CodecVersion>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         break;
                     case MessageType.ChannelState:
-                        _mc.ChannelState = Serializer.DeserializeWithLengthPrefix<MumbleProto.ChannelState>(_ssl,
+                        _mc.ChannelState = Serializer.DeserializeWithLengthPrefix<ChannelState>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         break;
                     case MessageType.PermissionQuery:
-                        _mc.PermissionQuery = Serializer.DeserializeWithLengthPrefix<MumbleProto.PermissionQuery>(_ssl,
+                        _mc.PermissionQuery = Serializer.DeserializeWithLengthPrefix<PermissionQuery>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         break;
                     case MessageType.UserState:
-                        _mc.UserState = Serializer.DeserializeWithLengthPrefix<MumbleProto.UserState>(_ssl,
+                        _mc.UserState = Serializer.DeserializeWithLengthPrefix<UserState>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         break;
                     case MessageType.ServerSync:
-                        _mc.ServerSync = Serializer.DeserializeWithLengthPrefix<MumbleProto.ServerSync>(_ssl,
+                        _mc.ServerSync = Serializer.DeserializeWithLengthPrefix<ServerSync>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         _mc.ConnectionSetupFinished = true;
                         break;
                     case MessageType.ServerConfig:
-                        _mc.ServerConfig = Serializer.DeserializeWithLengthPrefix<MumbleProto.ServerConfig>(_ssl,
+                        _mc.ServerConfig = Serializer.DeserializeWithLengthPrefix<ServerConfig>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         _validConnection = true; // handshake complete
                         break;
                     case MessageType.TextMessage:
-                        var textMessage = Serializer.DeserializeWithLengthPrefix<MumbleProto.ServerConfig>(_ssl,
+                        var textMessage = Serializer.DeserializeWithLengthPrefix<TextMessage>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         break;
                     case MessageType.UDPTunnel:
-                        var udpTunnel = Serializer.DeserializeWithLengthPrefix<MumbleProto.UDPTunnel>(_ssl,
+                        var udpTunnel = Serializer.DeserializeWithLengthPrefix<UDPTunnel>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         break;
                     case MessageType.Ping:
-                        var ping = Serializer.DeserializeWithLengthPrefix<MumbleProto.Ping>(_ssl,
+                        var ping = Serializer.DeserializeWithLengthPrefix<Ping>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
-                            logger.Debug("Received ping: "+ ping.timestamp +", udp: " + ping.udp_packets + ", tcp:" + ping.tcp_packets);
+                        logger.Debug("Received ping: " + ping.timestamp + ", udp: " + ping.udp_packets + ", tcp:" +
+                                     ping.tcp_packets);
                         break;
                     case MessageType.Reject:
-                        var reject = Serializer.DeserializeWithLengthPrefix<MumbleProto.Reject>(_ssl,
+                        var reject = Serializer.DeserializeWithLengthPrefix<Reject>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
                         _validConnection = false;
-                        _errorCallback("Mumble server reject: " + reject.reason,true);
+                        _errorCallback("Mumble server reject: " + reject.reason, true);
                         break;
                     default:
-                        _errorCallback("Message type " + messageType.ToString() + " not implemented", true);
+                        _errorCallback("Message type " + messageType + " not implemented", true);
                         break;
                 }
             }
             catch (EndOfStreamException ex)
             {
                 logger.Error(ex);
+            }
+        }
+
+        private void ProcessCryptSetup(CryptSetup cryptSetup)
+        {
+            if (cryptSetup.key != null && cryptSetup.client_nonce != null && cryptSetup.server_nonce != null)
+            {
+                _mc.CryptSetup = cryptSetup;
+                SendMessage(MessageType.CryptSetup, new CryptSetup {client_nonce = cryptSetup.client_nonce});
+                _connectUDP();
+            }
+            else if (cryptSetup.server_nonce != null) 
+            {
+                logger.Debug("Received new server Nonce");
+                _mc.CryptSetup.server_nonce = cryptSetup.server_nonce;
+            }
+            else 
+            {
+                logger.Debug("Resending client Nonce");
+                SendMessage(MessageType.CryptSetup, new CryptSetup { client_nonce = _mc.CryptSetup.client_nonce });
             }
         }
 

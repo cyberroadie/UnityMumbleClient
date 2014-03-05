@@ -32,8 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="crypto">
-      <HintPath>..\..\..\Perforce\olivier_macwin\SkunkWorks\bc-csharp\crypto\bin\Debug\crypto.dll</HintPath>
+    <Reference Include="crypto, Version=1.8.5167.29030, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\bc-csharp\crypto\bin\Debug\crypto.dll</HintPath>
     </Reference>
     <Reference Include="NAudio">
       <HintPath>..\packages\NAudio.1.7\lib\net35\NAudio.dll</HintPath>

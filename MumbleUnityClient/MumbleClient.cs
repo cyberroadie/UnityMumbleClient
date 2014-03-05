@@ -13,7 +13,7 @@ namespace MumbleUnityClient
 {
     public delegate void MumbleError(string message, bool fatal = false);
 
-    public delegate void StartUDP(CryptSetup cryptSetup);
+    public delegate void StartUDP();
 
     public class MumbleClient
     {
@@ -46,7 +46,7 @@ namespace MumbleUnityClient
             }
             var host = new IPEndPoint(addresses[0], port);
             _mtc = new MumbleTCPConnection(host, hostName, ConnectUDP, DealWithError, this);
-            _muc = new MumbleUDPConnection(host, DealWithError);
+            _muc = new MumbleUDPConnection(host, DealWithError, this);
 
         }
 
@@ -72,10 +72,10 @@ namespace MumbleUnityClient
             _mtc.Connect(username, password);
         }
 
-        public void ConnectUDP(CryptSetup cryptSetup)
+        public void ConnectUDP()
         {
             logger.Debug("Connecting via UDP");
-            _muc.Connect(cryptSetup);
+            _muc.Connect();
         }
 
         public void Process()
