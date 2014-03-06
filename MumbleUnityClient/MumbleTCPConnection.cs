@@ -14,7 +14,7 @@ namespace MumbleUnityClient
 {
     public class MumbleTCPConnection
     {
-        private readonly StartUDP _connectUDP;
+        private readonly UpdateOcbServerNonce _updateOcbServerNonce;
         private readonly MumbleError _errorCallback;
         private readonly IPEndPoint _host;
         private readonly string _hostname;
@@ -27,14 +27,14 @@ namespace MumbleUnityClient
         private bool _validConnection;
         private BinaryWriter _writer;
 
-        public MumbleTCPConnection(IPEndPoint host, string hostname, StartUDP connectUDP, MumbleError errorCallback,
+        public MumbleTCPConnection(IPEndPoint host, string hostname, UpdateOcbServerNonce updateOcbServerNonce,  MumbleError errorCallback,
             MumbleClient mc)
         {
             _host = host;
             _hostname = hostname;
             _mc = mc;
             _tcpClient = new TcpClient();
-            _connectUDP = connectUDP;
+            _updateOcbServerNonce = updateOcbServerNonce;
             _errorCallback = errorCallback;
         }
 
@@ -61,7 +61,7 @@ namespace MumbleUnityClient
             // for 30 seconds it will close the connection
             var tcpTimer = new Timer();
             tcpTimer.Elapsed += SendPing;
-            tcpTimer.Interval = 5000;
+            tcpTimer.Interval = 10000;
             tcpTimer.Enabled = true;
         }
 
@@ -77,7 +77,7 @@ namespace MumbleUnityClient
 
         private void ConnectViaTCP()
         {
-            _tcpClient.Connect(_host);
+            _tcpClient.Connect(_host); // TODO Handle no running server (no open socket to conect to)
             NetworkStream networkStream = _tcpClient.GetStream();
             _ssl = new SslStream(networkStream, false, ValidateCertificate);
             _ssl.AuthenticateAsClient(_hostname);
@@ -184,17 +184,16 @@ namespace MumbleUnityClient
             {
                 _mc.CryptSetup = cryptSetup;
                 SendMessage(MessageType.CryptSetup, new CryptSetup {client_nonce = cryptSetup.client_nonce});
-                _connectUDP();
+                _mc.ConnectUDP();
             }
-            else if (cryptSetup.server_nonce != null) 
+            else if(cryptSetup.server_nonce != null)
             {
-                logger.Debug("Received new server Nonce");
-                _mc.CryptSetup.server_nonce = cryptSetup.server_nonce;
+                _updateOcbServerNonce(cryptSetup.server_nonce);
             }
-            else 
+            else
             {
-                logger.Debug("Resending client Nonce");
-                SendMessage(MessageType.CryptSetup, new CryptSetup { client_nonce = _mc.CryptSetup.client_nonce });
+                SendMessage(MessageType.CryptSetup, new CryptSetup { client_nonce = _mc.GetLatestClientNonce() });
+
             }
         }
 

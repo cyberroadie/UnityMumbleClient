@@ -13,7 +13,7 @@ namespace MumbleUnityClient
 {
     public delegate void MumbleError(string message, bool fatal = false);
 
-    public delegate void StartUDP();
+    public delegate void UpdateOcbServerNonce(byte[] cryptSetup);
 
     public class MumbleClient
     {
@@ -45,9 +45,8 @@ namespace MumbleUnityClient
                     );
             }
             var host = new IPEndPoint(addresses[0], port);
-            _mtc = new MumbleTCPConnection(host, hostName, ConnectUDP, DealWithError, this);
             _muc = new MumbleUDPConnection(host, DealWithError, this);
-
+            _mtc = new MumbleTCPConnection(host, hostName, _muc.UpdateOcbServerNonce, DealWithError, this);
         }
 
         public void DealWithError(string message, bool fatal)
@@ -90,6 +89,11 @@ namespace MumbleUnityClient
                 message = textMessage
             };
             _mtc.SendMessage(MessageType.TextMessage, msg);
+        }
+
+        public byte[] GetLatestClientNonce()
+        {
+            return _muc.GetLatestClientNonce();
         }
     }
 }

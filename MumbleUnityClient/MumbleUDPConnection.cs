@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading.Tasks;
 using System.Timers;
 using MumbleProto;
 using NLog;
@@ -30,6 +29,12 @@ namespace MumbleUnityClient
             _errorCallback = errorCallback;
             _udpClient = new UdpClient();
             _mc = mc;
+        }
+
+        public void UpdateOcbServerNonce(byte[] serverNonce)
+        {
+            if(serverNonce != null)
+                ocb.CryptSetup.server_nonce = serverNonce;
         }
 
         public void Connect()
@@ -88,10 +93,11 @@ namespace MumbleUnityClient
             ulong unixTimeStamp = (ulong) (DateTime.UtcNow.Ticks - DateTime.Parse("01/01/1970 00:00:00").Ticks);
             byte[] timeBytes = BitConverter.GetBytes(unixTimeStamp);
             var dgram = new byte[timeBytes.Length + 1];
+//            var dgram = new byte[16];
             timeBytes.CopyTo(dgram, 1);
             dgram[0] = (1 << 5);
             logger.Debug("Sending UDP ping with timestamp: " + unixTimeStamp);
-            var encryptedData = ocb.encrypt(dgram);
+            var encryptedData = ocb.Encrypt(dgram);
             _udpClient.Send(encryptedData, encryptedData.Length);
 //            _udpClient.Send(dgram, dgram.Length);
 
@@ -101,6 +107,11 @@ namespace MumbleUnityClient
         public void Close()
         {
             _udpClient.Close();
+        }
+
+        public byte[] GetLatestClientNonce()
+        {
+            return ocb.CryptSetup.client_nonce;
         }
     }
 }
