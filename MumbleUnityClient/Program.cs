@@ -11,7 +11,7 @@ namespace MumbleUnityClient
 
         private static void Main(string[] args)
         {
-            _mc = new MumbleClient("10.1.0.123", 64738);
+            _mc = new MumbleClient("192.168.1.120", 64738);
             _mc.ConnectTCP("olivier", "");
 
             Thread t = new Thread(Update);

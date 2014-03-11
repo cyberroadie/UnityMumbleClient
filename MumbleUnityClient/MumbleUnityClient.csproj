@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CryptState.cs" />
     <Compile Include="MessageType.cs" />
     <Compile Include="Mumble.cs" />
     <Compile Include="MumbleClient.cs" />

@@ -20,6 +20,7 @@ namespace MumbleUnityClient
         private MumbleError _errorCallback;
         private bool isValidConnection = false;
         protected OCBEncryption ocb;
+        private CryptState _cryptState;
         private static int MAX_UDP_PACKET = 128;
         private byte[] response = new byte[MAX_UDP_PACKET];
 
@@ -34,12 +35,14 @@ namespace MumbleUnityClient
         public void UpdateOcbServerNonce(byte[] serverNonce)
         {
             if(serverNonce != null)
-                ocb.CryptSetup.server_nonce = serverNonce;
+                _cryptState.CryptSetup.server_nonce = serverNonce;
         }
 
         public void Connect()
         {
             ocb = new OCBEncryption(_mc.CryptSetup);
+            _cryptState = new CryptState();
+            _cryptState.CryptSetup = _mc.CryptSetup;
             _udpClient.Connect(_host);
 
             var tcpTimer = new System.Timers.Timer();
@@ -76,32 +79,15 @@ namespace MumbleUnityClient
 
         public void SendPing()
         {
-//            long timestamp = DateTime.Now.Ticks;
-//
-//            byte[] buffer = new byte[9];
-//            buffer[0] = 1 << 5;
-//            buffer[1] = (byte)((timestamp >> 56) & 0xFF);
-//            buffer[2] = (byte)((timestamp >> 48) & 0xFF);
-//            buffer[3] = (byte)((timestamp >> 40) & 0xFF);
-//            buffer[4] = (byte)((timestamp >> 32) & 0xFF);
-//            buffer[5] = (byte)((timestamp >> 24) & 0xFF);
-//            buffer[6] = (byte)((timestamp >> 16) & 0xFF);
-//            buffer[7] = (byte)((timestamp >> 8) & 0xFF);
-//            buffer[8] = (byte)((timestamp) & 0xFF);
-//            _udpClient.Send(buffer, buffer.Length);
-
             ulong unixTimeStamp = (ulong) (DateTime.UtcNow.Ticks - DateTime.Parse("01/01/1970 00:00:00").Ticks);
             byte[] timeBytes = BitConverter.GetBytes(unixTimeStamp);
-            var dgram = new byte[timeBytes.Length + 1];
-//            var dgram = new byte[16];
+            var dgram = new byte[9];
             timeBytes.CopyTo(dgram, 1);
             dgram[0] = (1 << 5);
             logger.Debug("Sending UDP ping with timestamp: " + unixTimeStamp);
-            var encryptedData = ocb.Encrypt(dgram);
+            var encryptedData = _cryptState.Encrypt(dgram, timeBytes.Length + 1);
+//            var encryptedData = ocb.Encrypt(dgram, timeBytes.Length + 1);
             _udpClient.Send(encryptedData, encryptedData.Length);
-//            _udpClient.Send(dgram, dgram.Length);
-
-
         }
 
         public void Close()
@@ -111,7 +97,7 @@ namespace MumbleUnityClient
 
         public byte[] GetLatestClientNonce()
         {
-            return ocb.CryptSetup.client_nonce;
+            return _cryptState.CryptSetup.client_nonce;
         }
     }
 }

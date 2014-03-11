@@ -195,24 +195,24 @@ namespace MumbleUnityClient
             }
         }
 
-        public byte[] Encrypt(byte[] inBytes)
+        // buffer + amount of usefull bytes in buffer
+        public byte[] Encrypt(byte[] inBytes, int length)
         {
             try
             {
                 _lock.EnterReadLock();
-                //for (int i = 0; i < CryptSetup.client_nonce.Length; i++)
-                
-
                 for (int i = 0; i < OcbAes.BLOCK_SIZE; i++)
                 {
                     if (++CryptSetup.client_nonce[i] != 0)
                         break;
                 }
 
-                logger.Debug("Encrypting " + inBytes.Length + " bytes");
+                logger.Debug("Encrypting " + length + " bytes");
                 var tag = new byte[OcbAes.BLOCK_SIZE];
-                byte[] dst = _aes.Encrypt(inBytes, 0, inBytes.Length, CryptSetup.client_nonce, 0, tag, 0);
-                
+
+                byte[] dst = _aes.Encrypt(inBytes, 0, length, CryptSetup.client_nonce, 0, tag, 0);
+
+                logger.Debug("o: " + (int)CryptSetup.client_nonce[0]);
                 var fdst = new byte[dst.Length + 4];
                 fdst[0] = CryptSetup.client_nonce[0];
                 fdst[1] = tag[0];
