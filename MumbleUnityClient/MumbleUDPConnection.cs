@@ -46,34 +46,32 @@ namespace MumbleUnityClient
             _udpClient.Connect(_host);
 
             var tcpTimer = new System.Timers.Timer();
-            tcpTimer.Elapsed += new ElapsedEventHandler(Handshake);
+            tcpTimer.Elapsed += new ElapsedEventHandler(RunPing);
             tcpTimer.Interval = 5000;
             tcpTimer.Enabled = true;
 
         }
 
-        private void Handshake(object sender, ElapsedEventArgs elapsedEventArgs)
+        private void RunPing(object sender, ElapsedEventArgs elapsedEventArgs)
         {
              SendPing();
-
-//            isValidConnection = response.SequenceEqual(dgram);
-
-//            _udpClient.BeginReceive(response, 0, MAX_UDP_PACKET, SocketFlags.None, receiveCallback, null);
-
-            _udpClient.BeginReceive(new AsyncCallback(receive), null);
-
-//            if (!isValidConnection)
-//                _errorCallback("Incorrect response from server during UDP handshake", false);
-
+            _udpClient.BeginReceive(new AsyncCallback(receiveUdpMessage), null);
         }
 
-        private void receive(IAsyncResult res)
+        private void receiveUdpMessage(IAsyncResult res)
         {
             IPEndPoint RemoteIpEndPoint = _host;
-            byte[] response = _udpClient.EndReceive(res, ref RemoteIpEndPoint);
+            byte[] encrypted = _udpClient.EndReceive(res, ref RemoteIpEndPoint);
 
-            logger.Debug("************ UDP response received");
-            _udpClient.BeginReceive(new AsyncCallback(receive), null);
+            byte[] message = _cryptState.Decrypt(encrypted, encrypted.Length);
+
+
+            // figure out type of message
+            int type = message[0] >> 5 & 0x7;
+            logger.Debug("************ UDP response received: " + Convert.ToString(message[0], 2).PadLeft(8, '0'));
+            logger.Debug("************ UDP response received: " + type);
+         
+            _udpClient.BeginReceive(new AsyncCallback(receiveUdpMessage), null);
         }
 
 
