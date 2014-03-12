@@ -1,30 +1,21 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Timers;
-using MumbleProto;
 using NLog;
 
 namespace MumbleUnityClient
 {
-    class MumbleUDPConnection
+    class MumbleUdpConnection
     {
         private Logger logger = LogManager.GetLogger("MumbleUnityConnection");
         private readonly IPEndPoint _host;
         private readonly UdpClient _udpClient;
         private readonly MumbleClient _mc;
-        private MumbleError _errorCallback;
-        private bool isValidConnection = false;
-        protected OCBEncryption ocb;
+        private readonly MumbleError _errorCallback;
         private CryptState _cryptState;
-        private static int MAX_UDP_PACKET = 128;
-        private byte[] response = new byte[MAX_UDP_PACKET];
 
-        public MumbleUDPConnection(IPEndPoint host, MumbleError errorCallback, MumbleClient mc)
+        internal MumbleUdpConnection(IPEndPoint host, MumbleError errorCallback, MumbleClient mc)
         {
             _host = host;
             _errorCallback = errorCallback;
@@ -32,21 +23,26 @@ namespace MumbleUnityClient
             _mc = mc;
         }
 
-        public void UpdateOcbServerNonce(byte[] serverNonce)
+        public MumbleError ErrorCallback
+        {
+            get { return _errorCallback; }
+        }
+
+        internal void UpdateOcbServerNonce(byte[] serverNonce)
         {
             if(serverNonce != null)
                 _cryptState.CryptSetup.server_nonce = serverNonce;
         }
 
-        public void Connect()
+        internal void Connect()
         {
-            ocb = new OCBEncryption(_mc.CryptSetup);
+//            ocb = new OCBEncryption(_mc.CryptSetup);
             _cryptState = new CryptState();
             _cryptState.CryptSetup = _mc.CryptSetup;
             _udpClient.Connect(_host);
 
-            var tcpTimer = new System.Timers.Timer();
-            tcpTimer.Elapsed += new ElapsedEventHandler(RunPing);
+            var tcpTimer = new Timer();
+            tcpTimer.Elapsed += RunPing;
             tcpTimer.Interval = 5000;
             tcpTimer.Enabled = true;
 
@@ -55,13 +51,13 @@ namespace MumbleUnityClient
         private void RunPing(object sender, ElapsedEventArgs elapsedEventArgs)
         {
              SendPing();
-            _udpClient.BeginReceive(new AsyncCallback(receiveUdpMessage), null);
+            _udpClient.BeginReceive(ReceiveUdpMessage, null);
         }
 
-        private void receiveUdpMessage(IAsyncResult res)
+        private void ReceiveUdpMessage(IAsyncResult res)
         {
-            IPEndPoint RemoteIpEndPoint = _host;
-            byte[] encrypted = _udpClient.EndReceive(res, ref RemoteIpEndPoint);
+            IPEndPoint remoteIpEndPoint = _host;
+            byte[] encrypted = _udpClient.EndReceive(res, ref remoteIpEndPoint);
 
             byte[] message = _cryptState.Decrypt(encrypted, encrypted.Length);
 
@@ -71,11 +67,11 @@ namespace MumbleUnityClient
             logger.Debug("************ UDP response received: " + Convert.ToString(message[0], 2).PadLeft(8, '0'));
             logger.Debug("************ UDP response received: " + type);
          
-            _udpClient.BeginReceive(new AsyncCallback(receiveUdpMessage), null);
+            _udpClient.BeginReceive(ReceiveUdpMessage, null);
         }
 
 
-        public void SendPing()
+        internal void SendPing()
         {
             ulong unixTimeStamp = (ulong) (DateTime.UtcNow.Ticks - DateTime.Parse("01/01/1970 00:00:00").Ticks);
             byte[] timeBytes = BitConverter.GetBytes(unixTimeStamp);
@@ -88,12 +84,12 @@ namespace MumbleUnityClient
             _udpClient.Send(encryptedData, encryptedData.Length);
         }
 
-        public void Close()
+        internal void Close()
         {
             _udpClient.Close();
         }
 
-        public byte[] GetLatestClientNonce()
+        internal byte[] GetLatestClientNonce()
         {
             return _cryptState.CryptSetup.client_nonce;
         }

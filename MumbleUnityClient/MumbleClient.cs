@@ -1,38 +1,31 @@
 ﻿using System;
-using System.IO;
 using System.Net;
-using System.Net.Security;
-using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
 using MumbleProto;
 using NLog;
-using ProtoBuf;
 using Version = MumbleProto.Version;
 
 namespace MumbleUnityClient
 {
     public delegate void MumbleError(string message, bool fatal = false);
-
     public delegate void UpdateOcbServerNonce(byte[] cryptSetup);
 
     public class MumbleClient
     {
         Logger logger = LogManager.GetLogger("MumbleClient");
 
-        private MumbleTCPConnection _mtc;
-        private MumbleUDPConnection _muc;
+        private MumbleTcpConnection _mtc;
+        private MumbleUdpConnection _muc;
 
-        private bool _connectionSetupFinished = false;
         public bool ConnectionSetupFinished { get; set; }
-        
-        public Version RemoteVersion { get; set; }
-        public CryptSetup CryptSetup { get; set; }
-        public ChannelState ChannelState { get; set; }
-        public UserState UserState { get; set; }
-        public ServerSync ServerSync { get; set; }
-        public CodecVersion CodecVersion { get; set; }
-        public PermissionQuery PermissionQuery { get; set; }
-        public ServerConfig ServerConfig { get; set; }
+
+        internal Version RemoteVersion { get; set; }
+        internal CryptSetup CryptSetup { get; set; }
+        internal ChannelState ChannelState { get; set; }
+        internal UserState UserState { get; set; }
+        internal ServerSync ServerSync { get; set; }
+        internal CodecVersion CodecVersion { get; set; }
+        internal PermissionQuery PermissionQuery { get; set; }
+        internal ServerConfig ServerConfig { get; set; }
 
         public MumbleClient(String hostName, int port)
         {
@@ -45,11 +38,11 @@ namespace MumbleUnityClient
                     );
             }
             var host = new IPEndPoint(addresses[0], port);
-            _muc = new MumbleUDPConnection(host, DealWithError, this);
-            _mtc = new MumbleTCPConnection(host, hostName, _muc.UpdateOcbServerNonce, DealWithError, this);
+            _muc = new MumbleUdpConnection(host, DealWithError, this);
+            _mtc = new MumbleTcpConnection(host, hostName, _muc.UpdateOcbServerNonce, DealWithError, this);
         }
 
-        public void DealWithError(string message, bool fatal)
+        private void DealWithError(string message, bool fatal)
         {
             if (fatal)
             {
@@ -65,13 +58,13 @@ namespace MumbleUnityClient
             }
         }
 
-        public void ConnectTCP(string username, string password)
+        public void Connect(string username, string password)
         {
             logger.Debug("Connecting via TCP");
             _mtc.Connect(username, password);
         }
 
-        public void ConnectUDP()
+        internal void ConnectUdp()
         {
             logger.Debug("Connecting via UDP");
             _muc.Connect();
@@ -84,7 +77,7 @@ namespace MumbleUnityClient
 
         public void SendTextMessage(string textMessage)
         {
-            MumbleProto.TextMessage msg = new TextMessage()
+            var msg = new TextMessage
             {
                 message = textMessage
             };
