@@ -2,7 +2,7 @@
 using System.Security.Cryptography;
 using MumbleProto;
 using MumbleUnityClient.Annotations;
-using NLog;
+//using NLog;
 
 namespace MumbleUnityClient
 {
@@ -10,7 +10,7 @@ namespace MumbleUnityClient
     {
         private readonly int AES_BLOCK_SIZE = 16;
         private readonly byte[] _decryptHistory = new byte[256];
-        private readonly Logger _logger = LogManager.GetLogger("CryptState");
+//        private readonly Logger _logger = LogManager.GetLogger("CryptState");
 
         private CryptSetup _cryptSetup;
         private ICryptoTransform _decryptor;
@@ -80,14 +80,14 @@ namespace MumbleUnityClient
                     break;
             }
 
-            _logger.Debug("Encrypting " + length + " bytes");
+//            _logger.Debug("Encrypting " + length + " bytes");
             var tag = new byte[AES_BLOCK_SIZE];
 
             var dst = new byte[length];
             OcbEncrypt(inBytes, length, dst, _cryptSetup.client_nonce, tag);
 
             var fdst = new byte[dst.Length + 4];
-            _logger.Debug("IV: " + (int) _cryptSetup.client_nonce[0]);
+//            _logger.Debug("IV: " + (int) _cryptSetup.client_nonce[0]);
             fdst[0] = _cryptSetup.client_nonce[0];
             fdst[1] = tag[0];
             fdst[2] = tag[1];

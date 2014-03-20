@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Net;
 using MumbleProto;
-using NLog;
 using Version = MumbleProto.Version;
 
 namespace MumbleUnityClient
@@ -11,7 +10,6 @@ namespace MumbleUnityClient
 
     public class MumbleClient
     {
-        Logger logger = LogManager.GetLogger("MumbleClient");
 
         private MumbleTcpConnection _mtc;
         private MumbleUdpConnection _muc;
@@ -60,13 +58,13 @@ namespace MumbleUnityClient
 
         public void Connect(string username, string password)
         {
-            logger.Debug("Connecting via TCP");
-            _mtc.Connect(username, password);
+//            logger.Debug("Connecting via TCP");
+            _mtc.StartClient(username, password);
         }
 
         internal void ConnectUdp()
         {
-            logger.Debug("Connecting via UDP");
+//            logger.Debug("Connecting via UDP");
             _muc.Connect();
         }
 

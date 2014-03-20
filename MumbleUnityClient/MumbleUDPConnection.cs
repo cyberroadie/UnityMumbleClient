@@ -2,13 +2,13 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Timers;
-using NLog;
+//using NLog;
 
 namespace MumbleUnityClient
 {
     class MumbleUdpConnection
     {
-        private Logger logger = LogManager.GetLogger("MumbleUnityConnection");
+//        private Logger logger = LogManager.GetLogger("MumbleUnityConnection");
         private readonly IPEndPoint _host;
         private readonly UdpClient _udpClient;
         private readonly MumbleClient _mc;
@@ -23,7 +23,7 @@ namespace MumbleUnityClient
             _mc = mc;
         }
 
-        public MumbleError ErrorCallback
+        internal MumbleError ErrorCallback
         {
             get { return _errorCallback; }
         }
@@ -64,8 +64,8 @@ namespace MumbleUnityClient
 
             // figure out type of message
             int type = message[0] >> 5 & 0x7;
-            logger.Debug("************ UDP response received: " + Convert.ToString(message[0], 2).PadLeft(8, '0'));
-            logger.Debug("************ UDP response received: " + type);
+//            logger.Debug("************ UDP response received: " + Convert.ToString(message[0], 2).PadLeft(8, '0'));
+//            logger.Debug("************ UDP response received: " + type);
          
             _udpClient.BeginReceive(ReceiveUdpMessage, null);
         }
@@ -78,7 +78,7 @@ namespace MumbleUnityClient
             var dgram = new byte[9];
             timeBytes.CopyTo(dgram, 1);
             dgram[0] = (1 << 5);
-            logger.Debug("Sending UDP ping with timestamp: " + unixTimeStamp);
+//            logger.Debug("Sending UDP ping with timestamp: " + unixTimeStamp);
             var encryptedData = _cryptState.Encrypt(dgram, timeBytes.Length + 1);
 //            var encryptedData = ocb.Encrypt(dgram, timeBytes.Length + 1);
             _udpClient.Send(encryptedData, encryptedData.Length);

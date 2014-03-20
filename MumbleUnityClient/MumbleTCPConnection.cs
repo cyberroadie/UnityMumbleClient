@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Timers;
 using MumbleProto;
-using NLog;
+//using NLog;
 using ProtoBuf;
 using Version = MumbleProto.Version;
 
@@ -21,7 +21,7 @@ namespace MumbleUnityClient
 
         private readonly MumbleClient _mc;
         private readonly TcpClient _tcpClient;
-        private readonly Logger _logger = LogManager.GetLogger("MumbleUnityConnect");
+//        private readonly Logger _logger = LogManager.GetLogger("MumbleUnityConnect");
         private BinaryReader _reader;
         private SslStream _ssl;
         private bool _validConnection;
@@ -38,7 +38,7 @@ namespace MumbleUnityClient
             _errorCallback = errorCallback;
         }
 
-        internal void Connect(string username, string password)
+        internal void StartClient(string username, string password)
         {
             ConnectViaTcp();
             var version = new Version
@@ -69,7 +69,7 @@ namespace MumbleUnityClient
         {
             lock (_ssl)
             {
-                _logger.Debug("Sending " + mt + " message");
+//                _logger.Debug("Sending " + mt + " message");
                 _writer.Write(IPAddress.HostToNetworkOrder((short) mt));
                 Serializer.SerializeWithLengthPrefix(_ssl, message, PrefixStyle.Fixed32BigEndian);
             }
@@ -77,7 +77,10 @@ namespace MumbleUnityClient
 
         internal void ConnectViaTcp()
         {
-            _tcpClient.Connect(_host); // TODO Handle no running server (no open socket to conect to)
+//            _tcpClient.BeginConnect()
+
+
+            _tcpClient.Connect(_host); 
             NetworkStream networkStream = _tcpClient.GetStream();
             _ssl = new SslStream(networkStream, false, ValidateCertificate);
             _ssl.AuthenticateAsClient(_hostname);
@@ -89,11 +92,11 @@ namespace MumbleUnityClient
             {
                 if (DateTime.Now - startWait > TimeSpan.FromSeconds(2))
                 {
-                    _logger.Error("Time out waiting for SSL authentication");
+//                    _logger.Error("Time out waiting for SSL authentication");
                     throw new TimeoutException("Time out waiting for SSL authentication");
                 }
             }
-            _logger.Debug("TCP connection established");
+//            _logger.Debug("TCP connection established");
         }
 
         private bool ValidateCertificate(object sender, X509Certificate certificate, X509Chain chain,
@@ -107,14 +110,14 @@ namespace MumbleUnityClient
             try
             {
                 var messageType = (MessageType) IPAddress.NetworkToHostOrder(_reader.ReadInt16());
-                _logger.Debug("Received message type: " + messageType);
+//                _logger.Debug("Received message type: " + messageType);
 
                 switch (messageType)
                 {
                     case MessageType.Version:
                         _mc.RemoteVersion = Serializer.DeserializeWithLengthPrefix<Version>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
-                        _logger.Debug("Server version: " + _mc.RemoteVersion.release);
+//                        _logger.Debug("Server version: " + _mc.RemoteVersion.release);
                         break;
                     case MessageType.CryptSetup:
                         var cryptSetup = Serializer.DeserializeWithLengthPrefix<CryptSetup>(_ssl,
@@ -158,8 +161,8 @@ namespace MumbleUnityClient
                     case MessageType.Ping:
                         var ping = Serializer.DeserializeWithLengthPrefix<Ping>(_ssl,
                             PrefixStyle.Fixed32BigEndian);
-                        _logger.Debug("Received ping: " + ping.timestamp + ", udp: " + ping.udp_packets + ", tcp:" +
-                                     ping.tcp_packets);
+//                        _logger.Debug("Received ping: " + ping.timestamp + ", udp: " + ping.udp_packets + ", tcp:" +
+//                                     ping.tcp_packets);
                         break;
                     case MessageType.Reject:
                         var reject = Serializer.DeserializeWithLengthPrefix<Reject>(_ssl,
@@ -174,7 +177,7 @@ namespace MumbleUnityClient
             }
             catch (EndOfStreamException ex)
             {
-                _logger.Error(ex);
+//                _logger.Error(ex);
             }
         }
 
@@ -208,7 +211,7 @@ namespace MumbleUnityClient
             {
                 var ping = new Ping();
                 ping.timestamp = (ulong) (DateTime.UtcNow.Ticks - DateTime.Parse("01/01/1970 00:00:00").Ticks);
-                _logger.Debug("Sending TCP ping with timestamp: " + ping.timestamp);
+//                _logger.Debug("Sending TCP ping with timestamp: " + ping.timestamp);
                 SendMessage(MessageType.Ping, new Ping());
             }
         }

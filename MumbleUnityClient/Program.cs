@@ -1,18 +1,18 @@
 ﻿using System;
 using System.Threading;
-using NLog;
+//using NLog;
 using MumbleUnityClient;
 
 namespace MumbleUnityClientTestProgram
 {
     public class Program
     {
-        private static readonly Logger logger = LogManager.GetLogger("Program");
+//        private static readonly Logger logger = LogManager.GetLogger("Program");
         private static MumbleClient _mc;
 
         private static void Main(string[] args)
         {
-            _mc = new MumbleClient("192.168.1.120", 64738);
+            _mc = new MumbleClient("192.168.2.8", 64738);
             _mc.Connect("olivier", "");
 
             Thread t = new Thread(Update);

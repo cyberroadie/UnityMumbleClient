@@ -5,7 +5,7 @@ VisualStudioVersion = 12.0.21005.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MumbleUnityClient", "MumbleUnityClient\MumbleUnityClient.csproj", "{8B62BA2A-8747-4F72-BFB1-DE4966D812C5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcbModeTestProject", "OcbModeTestProject\OcbModeTestProject.csproj", "{5E46ED8A-B830-484C-9B62-7CE31903FD11}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MumbleUnityClientTestProject", "OcbModeTestProject\MumbleUnityClientTestProject.csproj", "{5E46ED8A-B830-484C-9B62-7CE31903FD11}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
